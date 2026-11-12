@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitPro Coach — Platforma za Trenera i Klijente</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .tab-active {
+      border-bottom: 3px solid #10b981;
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .glass-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+    }
+    .animate-fade {
+      animation: fadeIn 0.25s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-lg border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <!-- Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-xl shadow-md">
+          <i class="fa-solid fa-dumbbell"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight">FitPro<span class="text-emerald-400">Coach</span></span>
+          <span class="hidden sm:inline-block ml-2 text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">PRO v2.6</span>
+        </div>
+      </div>
+
+      <!-- Role Switcher & Client Selector -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Client selector visible when in Client Mode -->
+        <div id="clientModeSelectorWrap" class="hidden items-center gap-2">
+          <span class="hidden md:inline text-xs text-slate-400">Aktivni klijent:</span>
+          <select id="headerClientSelect" onchange="selectClientFromHeader(this.value)" class="bg-slate-800 text-white text-xs sm:text-sm rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:border-emerald-400">
+          </select>
+        </div>
+
+        <!-- Role Toggle Pill -->
+        <div class="bg-slate-800 p-1 rounded-xl flex items-center border border-slate-700">
+          <button id="btnRoleTrainer" onclick="switchRole('trainer')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 bg-emerald-500 text-slate-950 shadow">
+            <i class="fa-solid fa-user-tie"></i>
+            <span>Trener</span>
+          </button>
+          <button id="btnRoleClient" onclick="switchRole('client')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+            <i class="fa-solid fa-user"></i>
+            <span>Klijent</span>
+          </button>
+        </div>
+
+        <!-- Reset Demo Data button -->
+        <button onclick="openResetModal()" title="Vrati početne demo podatke" class="p-2 text-slate-400 hover:text-amber-400 transition rounded-lg hover:bg-slate-800">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN APP CONTENT -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div id="appRoot"></div>
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- MODAL: ADD NEW CLIENT -->
+  <div id="modalAddClient" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-fade max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-emerald-500"></i> Dodaj novog klijenta
+        </h3>
+        <button onclick="closeModal('modalAddClient')" class="text-slate-400 hover:text-slate-700 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="formAddClient" onsubmit="handleAddClient(event)" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Ime i prezime *</label>
+            <input type="text" name="name" required placeholder="npr. Luka Modrić" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Godine *</label>
+            <input type="number" name="age" required min="14" max="90" value="28" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Spol</label>
+            <select name="gender" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+              <option value="M">Muško</option>
+              <option value="Ž">Žensko</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Glavni cilj *</label>
+            <select name="goal" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
+              <option value="Gubitak masnog tkiva (Definicija)">Gubitak masnog tkiva (Definicija)</option>
+              <option value="Izgradnja mišićne mase (Hipertrofija)">Izgradnja mišićne mase (Hipertrofija)</option>
+              <option value="Rekompozicija tijela">Rekompozicija tijela</option>
+              <option value="Kondicija i opće zdravlje">Kondicija i opće zdravlje</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Početna težina (kg) *</label>
+            <input type="number" step="0.1" name="weight" required value="80.0" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Visina (cm) *</label>
+            <input type="number" name="height" required value="178" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <p class="text-xs font-bold uppercase text-slate-600 mb-2.5">Ciljani dnevni unos (Kalorije i Makrosi)</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500">Kalorije (kcal)</label>
+              <input type="number" name="targetCalories" required value="2200" class="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-bold" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-emerald-600">Proteini (g)</label>
+              <input type="number" name="targetProtein" required value="170" class="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-bold" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-amber-600">Ugljikohidrati (g)</label>
+              <input type="number" name="targetCarbs" required value="220" class="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-bold" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-rose-600">Masti (g)</label>
+              <input type="number" name="targetFats" required value="70" class="w-full mt-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm font-bold" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modalAddClient')" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow-md transition">Spremi klijenta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD FOOD ITEM -->
+  <div id="modalAddFood" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fade">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900">Dodaj namirnicu u obrok</h3>
+        <button onclick="closeModal('modalAddFood')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="formAddFood" onsubmit="handleAddFood(event)" class="space-y-3.5">
+        <input type="hidden" name="mealIndex" id="foodMealIndex" />
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Naziv namirnice i količina *</label>
+          <input type="text" name="name" required placeholder="npr. Pileća prsa na žaru (200g)" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm outline-none focus:border-emerald-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Kalorije (kcal) *</label>
+            <input type="number" name="calories" required min="0" placeholder="330" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-emerald-600 mb-1">Proteini (g) *</label>
+            <input type="number" name="protein" required min="0" placeholder="62" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-amber-600 mb-1">Ugljikohidrati (g) *</label>
+            <input type="number" name="carbs" required min="0" placeholder="0" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-rose-600 mb-1">Masti (g) *</label>
+            <input type="number" name="fats" required min="0" placeholder="7" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeModal('modalAddFood')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950">Dodaj namirnicu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD WORKOUT DAY -->
+  <div id="modalAddWorkoutDay" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fade">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900">Novi trening dan</h3>
+        <button onclick="closeModal('modalAddWorkoutDay')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleAddWorkoutDay(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Dan u tjednu *</label>
+          <select name="day" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm">
+            <option value="Ponedjeljak">Ponedjeljak</option>
+            <option value="Utorak">Utorak</option>
+            <option value="Srijeda">Srijeda</option>
+            <option value="Četvrtak">Četvrtak</option>
+            <option value="Petak">Petak</option>
+            <option value="Subota">Subota</option>
+            <option value="Nedjelja">Nedjelja</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Fokus / Naziv treninga *</label>
+          <input type="text" name="focus" required placeholder="npr. Upper Body (Prsa i Leđa)" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modalAddWorkoutDay')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950">Kreiraj dan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD EXERCISE -->
+  <div id="modalAddExercise" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fade">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900">Dodaj vježbu</h3>
+        <button onclick="closeModal('modalAddExercise')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="formAddExercise" onsubmit="handleAddExercise(event)" class="space-y-3.5">
+        <input type="hidden" name="dayIndex" id="exerciseDayIndex" />
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Naziv vježbe *</label>
+          <input type="text" name="name" required placeholder="npr. Potisak bučicama na kosoj klupi" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Serije *</label>
+            <input type="number" name="sets" required min="1" value="4" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Ponavljanja *</label>
+            <input type="text" name="reps" required value="8-10" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Težina / RPE</label>
+            <input type="text" name="load" value="RPE 8" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Napomena za izvedbu</label>
+          <input type="text" name="notes" placeholder="npr. Kontrolirano spuštanje 3 sekunde, pauza 90s" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modalAddExercise')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950">Dodaj vježbu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD MEASUREMENT -->
+  <div id="modalAddMeasurement" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fade">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900">Unos novih mjera</h3>
+        <button onclick="closeModal('modalAddMeasurement')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleAddMeasurement(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Datum mjerenja *</label>
+          <input type="date" name="date" id="measDateInput" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Težina (kg) *</label>
+            <input type="number" step="0.1" name="weight" required placeholder="78.5" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Struk (cm) *</label>
+            <input type="number" step="0.5" name="waist" required placeholder="82" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Bokovi (cm)</label>
+            <input type="number" step="0.5" name="hips" placeholder="98" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Prsa (cm)</label>
+            <input type="number" step="0.5" name="chest" placeholder="104" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeModal('modalAddMeasurement')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950">Spremi mjere</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD PROGRESS PHOTO -->
+  <div id="modalAddPhoto" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fade">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+        <h3 class="text-lg font-extrabold text-slate-900">Dodaj sliku napretka</h3>
+        <button onclick="closeModal('modalAddPhoto')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleAddPhoto(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Datum *</label>
+            <input type="date" name="date" id="photoDateInput" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Kut snimanja *</label>
+            <select name="angle" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm">
+              <option value="Sprijeda">Sprijeda</option>
+              <option value="Sa strane">Sa strane</option>
+              <option value="Straga">Straga</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Težina na taj dan (kg)</label>
+          <input type="number" step="0.1" name="weight" placeholder="npr. 78.2" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Odaberi fotografiju s uređaja *</label>
+          <input type="file" id="photoFileInput" accept="image/*" required class="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-slate-200 rounded-xl p-1.5" />
+          <p class="text-[11px] text-slate-400 mt-1">Slika se automatski optimizira i sprema lokalno.</p>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeModal('modalAddPhoto')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950">Spremi fotografiju</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RESET CONFIRMATION -->
+  <div id="modalReset" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 animate-fade text-center">
+      <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3 text-xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-lg font-extrabold text-slate-900 mb-1">Vratiti demo podatke?</h3>
+      <p class="text-sm text-slate-500 mb-5">Ova radnja će obrisati sve tvoje lokalne izmjene i vratiti početne demo klijente.</p>
+      <div class="flex justify-center gap-3">
+        <button onclick="closeModal('modalReset')" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">Odustani</button>
+        <button onclick="confirmResetData()" class="px-4 py-2 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-600 text-slate-950">Da, resetiraj</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * FITPRO COACH APPLICATION - COMPLETE STATE & LOGIC
+     * ============================================================================
+     */
+
+    const STORAGE_KEY = 'fitpro_coach_data_v1';
+
+    // Helper: Generate clean SVG illustration data URLs for realistic demo progress photos
+    function generateSilhouetteSVG(label, dateStr, weightStr, bodyScale = 1, accent = '#10b981') {
+      const shoulderW = Math.round(68 * bodyScale);
+      const waistW = Math.round(48 * (bodyScale * 1.08));
+      const hipW = Math.round(56 * bodyScale);
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" width="300" height="400">
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0f172a"/>
+              <stop offset="100%" stop-color="#1e293b"/>
+            </linearGradient>
+            <linearGradient id="fig" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${accent}" stop-opacity="0.85"/>
+              <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.65"/>
+            </linearGradient>
+          </defs>
+          <rect width="300" height="400" fill="url(#bg)"/>
+          <!-- Grid lines -->
+          <line x1="0" y1="100" x2="300" y2="100" stroke="#334155" stroke-dasharray="4 4"/>
+          <line x1="0" y1="200" x2="300" y2="200" stroke="#334155" stroke-dasharray="4 4"/>
+          <line x1="0" y1="300" x2="300" y2="300" stroke="#334155" stroke-dasharray="4 4"/>
+          <line x1="150" y1="40" x2="150" y2="360" stroke="#334155" stroke-dasharray="4 4"/>
+          <!-- Head -->
+          <circle cx="150" cy="72" r="22" fill="url(#fig)"/>
+          <!-- Torso -->
+          <path d="M ${150 - shoulderW/2} 105 Q 150 98 ${150 + shoulderW/2} 105 L ${150 + waistW/2} 185 L ${150 + hipW/2} 225 L ${150 - hipW/2} 225 L ${150 - waistW/2} 185 Z" fill="url(#fig)"/>
+          <!-- Arms -->
+          <rect x="${150 - shoulderW/2 - 14}" y="108" width="12" height="95" rx="6" fill="url(#fig)"/>
+          <rect x="${150 + shoulderW/2 + 2}" y="108" width="12" height="95" rx="6" fill="url(#fig)"/>
+          <!-- Legs -->
+          <rect x="${150 - hipW/2 + 4}" y="228" width="18" height="115" rx="8" fill="url(#fig)"/>
+          <rect x="${150 + hipW/2 - 22}" y="228" width="18" height="115" rx="8" fill="url(#fig)"/>
+          <!-- Info Badge -->
+          <rect x="16" y="16" width="268" height="32" rx="8" fill="#020617" fill-opacity="0.7"/>
+          <text x="28" y="37" fill="#f8fafc" font-family="sans-serif" font-size="13" font-weight="bold">${label} • ${dateStr}</text>
+          <rect x="75" y="354" width="150" height="30" rx="15" fill="${accent}"/>
+          <text x="150" y="374" text-anchor="middle" fill="#020617" font-family="sans-serif" font-size="14" font-weight="bold">${weightStr}</text>
+        </svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    // Initial Realistic Demo Dataset
+    const DEFAULT_CLIENTS = [
+      {
+        id: 'c1',
+        name: 'Marko Kovač',
+        age: 31,
+        gender: 'M',
+        avatarColor: 'from-emerald-500 to-teal-600',
+        goal: 'Gubitak masnog tkiva (Definicija)',
+        height: 183,
+        startWeight: 92.5,
+        currentWeight: 86.8,
+        checkinStatus: 'Novo (Čeka pregled)',
+        targetMacros: { calories: 2350, protein: 195, carbs: 225, fats: 72 },
+        nutrition: [
+          {
+            mealName: 'Doručak (08:00)',
+            eatenToday: true,
+            items: [
+              { id: 'f1', name: 'Zobene pahuljice (80g)', calories: 295, protein: 10, carbs: 52, fats: 5 },
+              { id: 'f2', name: 'Whey izolat čokolada (35g)', calories: 130, protein: 28, carbs: 2, fats: 1 },
+              { id: 'f3', name: 'Borovnice i bademi (15g)', calories: 115, protein: 3, carbs: 10, fats: 8 }
+            ]
+          },
+          {
+            mealName: 'Ručak (13:00)',
+            eatenToday: true,
+            items: [
+              { id: 'f4', name: 'Pileća prsa na žaru (220g)', calories: 360, protein: 68, carbs: 0, fats: 8 },
+              { id: 'f5', name: 'Basmati riža kuhana (220g)', calories: 285, protein: 6, carbs: 62, fats: 1 },
+              { id: 'f6', name: 'Miješana salata + maslinovo ulje (10ml)', calories: 120, protein: 1, carbs: 6, fats: 10 }
+            ]
+          },
+          {
+            mealName: 'Međuobrok / Poslije treninga (17:30)',
+            eatenToday: false,
+            items: [
+              { id: 'f7', name: 'Skyr natur (250g)', calories: 155, protein: 27, carbs: 10, fats: 1 },
+              { id: 'f8', name: 'Banana srednja (120g)', calories: 105, protein: 1, carbs: 27, fats: 0 }
+            ]
+          },
+          {
+            mealName: 'Večera (20:30)',
+            eatenToday: false,
+            items: [
+              { id: 'f9', name: 'File lososa (180g)', calories: 370, protein: 38, carbs: 0, fats: 24 },
+              { id: 'f10', name: 'Batat pečeni (200g) + brokula', calories: 215, protein: 5, carbs: 44, fats: 2 }
+            ]
+          }
+        ],
+        workouts: [
+          {
+            day: 'Ponedjeljak',
+            focus: 'Upper Body — Snaga (Prsa & Leđa)',
+            exercises: [
+              { id: 'e1', name: 'Bench Press sa šipkom', sets: 4, reps: '6-8', load: '85 kg', notes: 'Pauza 2.5 min, kontrolirano spuštanje', completed: true },
+              { id: 'e2', name: 'Zgibovi s opterećenjem', sets: 4, reps: '8-10', load: '+10 kg', notes: 'Puni opseg pokreta', completed: true },
+              { id: 'e3', name: 'Kosi potisak bučicama', sets: 3, reps: '10-12', load: '28 kg', notes: 'RPE 8.5', completed: false },
+              { id: 'e4', name: 'Veslanje u pretklonu (T-bar)', sets: 3, reps: '10-12', load: '55 kg', notes: 'Zadržati 1s u kontrakciji', completed: false }
+            ]
+          },
+          {
+            day: 'Srijeda',
+            focus: 'Lower Body — Čučanj fokus',
+            exercises: [
+              { id: 'e5', name: 'Stražnji čučanj (Back Squat)', sets: 4, reps: '6-8', load: '110 kg', notes: 'Dubina ispod paralele', completed: false },
+              { id: 'e6', name: 'Rumunjsko mrtvo dizanje (RDL)', sets: 3, reps: '8-10', load: '95 kg', notes: 'Fokus na istezanje zadnje lože', completed: false },
+              { id: 'e7', name: 'Iskorak u hodu s bučicama', sets: 3, reps: '12/noga', load: '20 kg', notes: 'Bez odmora između nogu', completed: false }
+            ]
+          },
+          {
+            day: 'Petak',
+            focus: 'Upper Hipertrofija & Ruke',
+            exercises: [
+              { id: 'e8', name: 'Sjedeći potisak za ramena', sets: 4, reps: '8-10', load: '24 kg', notes: 'RPE 8', completed: false },
+              { id: 'e9', name: 'Lat pulldown široki hvat', sets: 3, reps: '12', load: '65 kg', notes: 'Kontrolirani negativ', completed: false },
+              { id: 'e10', name: 'Superset: Biceps pregib + Triceps uže', sets: 3, reps: '12-15', load: 'RPE 9', notes: 'Pauza 60s nakon superserije', completed: false }
+            ]
+          }
+        ],
+        checkins: [
+          {
+            id: 'chk1',
+            date: '2026-11-01',
+            weight: 88.1,
+            waist: 87.5,
+            energy: 8,
+            sleep: 7,
+            adherence: 92,
+            clientNote: 'Odličan tjedan! Snaga na benchu se drži unatoč deficitu. Malo sam bio gladan u četvrtak navečer.',
+            coachFeedback: 'Super posao Marko! -1.1 kg u odnosu na prošli tjedan je idealan tempo. Dodaj više povrća uz večeru radi sitosti.'
+          },
+          {
+            id: 'chk2',
+            date: '2026-11-08',
+            weight: 86.8,
+            waist: 86.0,
+            energy: 9,
+            sleep: 8,
+            adherence: 96,
+            clientNote: 'Osjećam se lagano i energično na treninzima. Trbušnjaci se polako počinju nazirati, struk pao za još 1.5 cm!',
+            coachFeedback: ''
+          }
+        ],
+        measurements: [
+          { date: '2026-10-04', weight: 92.5, waist: 93.0, hips: 104.0, chest: 109.0 },
+          { date: '2026-10-18', weight: 90.2, waist: 90.5, hips: 102.5, chest: 108.0 },
+          { date: '2026-11-01', weight: 88.1, waist: 87.5, hips: 101.0, chest: 107.0 },
+          { date: '2026-11-08', weight: 86.8, waist: 86.0, hips: 100.0, chest: 106.5 }
+        ],
+        photos: [
+          { id: 'p1', date: '2026-10-04', angle: 'Sprijeda', weight: '92.5 kg', url: generateSilhouetteSVG('Sprijeda (Start)', '04.10.2026', '92.5 kg', 1.15, '#f59e0b') },
+          { id: 'p2', date: '2026-11-08', angle: 'Sprijeda', weight: '86.8 kg', url: generateSilhouetteSVG('Sprijeda (Tjedan 5)', '08.11.2026', '86.8 kg', 0.96, '#10b981') },
+          { id: 'p3', date: '2026-10-04', angle: 'Sa strane', weight: '92.5 kg', url: generateSilhouetteSVG('Sa strane (Start)', '04.10.2026', '92.5 kg', 1.14, '#f59e0b') },
+          { id: 'p4', date: '2026-11-08', angle: 'Sa strane', weight: '86.8 kg', url: generateSilhouetteSVG('Sa strane (Tjedan 5)', '08.11.2026', '86.8 kg', 0.95, '#10b981') }
+        ]
+      },
+      {
+        id: 'c2',
+        name: 'Ana Horvat',
+        age: 26,
+        gender: 'Ž',
+        avatarColor: 'from-violet-500 to-purple-600',
+        goal: 'Izgradnja mišićne mase (Hipertrofija)',
+        height: 168,
+        startWeight: 54.0,
+        currentWeight: 56.4,
+        checkinStatus: 'Pregledano',
+        targetMacros: { calories: 2150, protein: 135, carbs: 265, fats: 62 },
+        nutrition: [
+          {
+            mealName: 'Doručak (08:30)',
+            eatenToday: true,
+            items: [
+              { id: 'af1', name: '3 cijela jaja + 2 tosta integralna', calories: 390, protein: 24, carbs: 32, fats: 18 },
+              { id: 'af2', name: 'Avokado (50g)', calories: 80, protein: 1, carbs: 4, fats: 7 }
+            ]
+          },
+          {
+            mealName: 'Ručak (13:30)',
+            eatenToday: true,
+            items: [
+              { id: 'af3', name: 'Pureći odrezak (160g)', calories: 230, protein: 46, carbs: 0, fats: 4 },
+              { id: 'af4', name: 'Tjestenina integralna kuhana (220g)', calories: 310, protein: 11, carbs: 62, fats: 2 },
+              { id: 'af5', name: 'Umak od rajčice i parmezan (15g)', calories: 110, protein: 6, carbs: 8, fats: 6 }
+            ]
+          },
+          {
+            mealName: 'Pre-workout obrok (17:00)',
+            eatenToday: false,
+            items: [
+              { id: 'af6', name: 'Rižini krekeri (4 kom) + maslac od kikirikija (20g)', calories: 260, protein: 7, carbs: 34, fats: 10 },
+              { id: 'af7', name: 'Whey protein (30g) u vodi', calories: 115, protein: 24, carbs: 2, fats: 1 }
+            ]
+          },
+          {
+            mealName: 'Večera (20:30)',
+            eatenToday: false,
+            items: [
+              { id: 'af8', name: 'Goveđi biftek (150g)', calories: 320, protein: 36, carbs: 0, fats: 18 },
+              { id: 'af9', name: 'Krumpir pečeni u pećnici (250g)', calories: 230, protein: 5, carbs: 50, fats: 1 }
+            ]
+          }
+        ],
+        workouts: [
+          {
+            day: 'Ponedjeljak',
+            focus: 'Gluteus & Zadnja loža',
+            exercises: [
+              { id: 'ae1', name: 'Barbell Hip Thrust', sets: 4, reps: '8-10', load: '90 kg', notes: '2 sekunde pauze na vrhu', completed: true },
+              { id: 'ae2', name: 'Bugarski čučanj', sets: 3, reps: '10/noga', load: '14 kg bučice', notes: 'Blagi nagib trupa naprijed', completed: true },
+              { id: 'ae3', name: 'Ležeća fleksija potkoljenice', sets: 3, reps: '12-15', load: '35 kg', notes: 'RPE 9', completed: false }
+            ]
+          },
+          {
+            day: 'Četvrtak',
+            focus: 'Upper Body Oblikovanje',
+            exercises: [
+              { id: 'ae4', name: 'Lat pulldown uski hvat', sets: 3, reps: '10-12', load: '40 kg', notes: 'Fokus na laktove prema dolje', completed: false },
+              { id: 'ae5', name: 'Odručenje bučicama (Lateral raises)', sets: 4, reps: '15', load: '6 kg', notes: 'Bez zamaha tijelom', completed: false }
+            ]
+          }
+        ],
+        checkins: [
+          {
+            id: 'achk1',
+            date: '2026-11-06',
+            weight: 56.4,
+            waist: 64.5,
+            energy: 9,
+            sleep: 9,
+            adherence: 98,
+            clientNote: 'Podigla sam 90kg na Hip Thrustu za 10 ponavljanja! Struk ostao isti dok gluteus i ramena lijepo napreduju.',
+            coachFeedback: 'Bravo Ana! Upravo to želimo u fazi čistog suficita. Nastavljamo s istim kalorijama još dva tjedna.'
+          }
+        ],
+        measurements: [
+          { date: '2026-09-25', weight: 54.0, waist: 64.0, hips: 93.0, chest: 85.0 },
+          { date: '2026-10-16', weight: 55.2, waist: 64.5, hips: 94.5, chest: 86.0 },
+          { date: '2026-11-06', weight: 56.4, waist: 64.5, hips: 96.0, chest: 86.5 }
+        ],
+        photos: [
+          { id: 'ap1', date: '2026-09-25', angle: 'Sa strane', weight: '54.0 kg', url: generateSilhouetteSVG('Sa strane (Start)', '25.09.2026', '54.0 kg', 0.85, '#8b5cf6') },
+          { id: 'ap2', date: '2026-11-06', angle: 'Sa strane', weight: '56.4 kg', url: generateSilhouetteSVG('Sa strane (Tjedan 6)', '06.11.2026', '56.4 kg', 0.92, '#10b981') }
+        ]
+      },
+      {
+        id: 'c3',
+        name: 'Ivana Babić',
+        age: 35,
+        gender: 'Ž',
+        avatarColor: 'from-amber-500 to-orange-600',
+        goal: 'Rekompozicija tijela',
+        height: 172,
+        startWeight: 71.0,
+        currentWeight: 68.5,
+        checkinStatus: 'Čeka check-in',
+        targetMacros: { calories: 1850, protein: 145, carbs: 180, fats: 60 },
+        nutrition: [
+          {
+            mealName: 'Doručak (07:30)',
+            eatenToday: false,
+            items: [
+              { id: 'if1', name: 'Grčki jogurt 0% (200g) + chia sjemenke (15g)', calories: 205, protein: 22, carbs: 14, fats: 6 },
+              { id: 'if2', name: 'Jabuka i cimet', calories: 85, protein: 0, carbs: 22, fats: 0 }
+            ]
+          },
+          {
+            mealName: 'Ručak (13:00)',
+            eatenToday: false,
+            items: [
+              { id: 'if3', name: 'Oslić file na žaru (220g)', calories: 210, protein: 44, carbs: 0, fats: 3 },
+              { id: 'if4', name: 'Quinoa kuhana (160g) + grill tikvice', calories: 240, protein: 8, carbs: 42, fats: 4 }
+            ]
+          },
+          {
+            mealName: 'Večera (19:30)',
+            eatenToday: false,
+            items: [
+              { id: 'if5', name: 'Omlet od 2 jaja i 100ml bjelanjaka', calories: 210, protein: 24, carbs: 2, fats: 11 },
+              { id: 'if6', name: 'Zelena salata s bučinim uljem (10ml)', calories: 115, protein: 1, carbs: 4, fats: 10 }
+            ]
+          }
+        ],
+        workouts: [
+          {
+            day: 'Utorak',
+            focus: 'Full Body A — Snaga i Stabilnost',
+            exercises: [
+              { id: 'ie1', name: 'Goblet čučanj s girjom', sets: 3, reps: '12', load: '16 kg', notes: 'Uspravna leđa', completed: false },
+              { id: 'ie2', name: 'Sklekovi na povišenju', sets: 3, reps: '10-12', load: 'TJ', notes: 'Čvrst core', completed: false },
+              { id: 'ie3', name: 'Plank izdržaj', sets: 3, reps: '45 sek', load: 'TJ', notes: 'Pauza 45s', completed: false }
+            ]
+          },
+          {
+            day: 'Subota',
+            focus: 'Full Body B & Kardio intervali',
+            exercises: [
+              { id: 'ie4', name: 'Mrtvo dizanje s bučicama', sets: 3, reps: '10', load: '2x16 kg', notes: 'RPE 8', completed: false },
+              { id: 'ie5', name: 'Veslanje na ergometru', sets: 5, reps: '2 min jako / 1 min lagano', load: 'Umjereno', notes: 'Puls 145-160 bpm', completed: false }
+            ]
+          }
+        ],
+        checkins: [
+          {
+            id: 'ichk1',
+            date: '2026-10-30',
+            weight: 68.5,
+            waist: 74.0,
+            energy: 7,
+            sleep: 7,
+            adherence: 85,
+            clientNote: 'Zbog posla sam preskočila jedan trening, ali prehranu sam pratila 85%. Odjeća mi je već dosta komotnija!',
+            coachFeedback: 'Odlično Ivana! Bitno je da je kontinuitet tu, idući tjedan lovimo sva 3 treninga.'
+          }
+        ],
+        measurements: [
+          { date: '2026-10-02', weight: 71.0, waist: 78.0, hips: 101.0, chest: 93.0 },
+          { date: '2026-10-16', weight: 69.6, waist: 76.0, hips: 99.5, chest: 92.5 },
+          { date: '2026-10-30', weight: 68.5, waist: 74.0, hips: 98.5, chest: 92.0 }
+        ],
+        photos: [
+          { id: 'ip1', date: '2026-10-02', angle: 'Sprijeda', weight: '71.0 kg', url: generateSilhouetteSVG('Sprijeda (Start)', '02.10.2026', '71.0 kg', 1.03, '#f97316') },
+          { id: 'ip2', date: '2026-10-30', angle: 'Sprijeda', weight: '68.5 kg', url: generateSilhouetteSVG('Sprijeda (Tjedan 4)', '30.10.2026', '68.5 kg', 0.94, '#10b981') }
+        ]
+      }
+    ];
+
+    // Application State
+    let appState = {
+      role: 'trainer', // 'trainer' | 'client'
+      selectedClientId: null, // null = dashboard list in trainer view; id = client profile
+      activeClientSelectorId: 'c1', // used when switching to client view
+      activeTab: 'nutrition', // 'nutrition' | 'workout' | 'checkin' | 'progress' | 'photos'
+      searchQuery: '',
+      compareAngle: 'Sprijeda',
+      clients: []
+    };
+
+    // Load or Initialize State
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            appState.clients = parsed;
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('Greška pri učitavanju podataka:', e);
+      }
+      appState.clients = JSON.parse(JSON.stringify(DEFAULT_CLIENTS));
+      saveState();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.clients));
+      } catch (e) {
+        showToast('Upozorenje: Memorija preglednika je puna (pokušajte s manjom slikom).', 'error');
+      }
+    }
+
+    // Toast notification helper
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const bg = type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white border border-emerald-500/40';
+      const icon = type === 'error' ? 'fa-circle-exclamation text-rose-200' : 'fa-circle-check text-emerald-400';
+      toast.className = `${bg} px-4 py-3 rounded-xl shadow-xl text-sm font-medium flex items-center gap-2.5 animate-fade pointer-events-auto`;
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Modal controls
+    function openModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+      }
+    }
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }
+    }
+
+    // Role & Navigation Switching
+    function switchRole(role) {
+      appState.role = role;
+      const btnT = document.getElementById('btnRoleTrainer');
+      const btnC = document.getElementById('btnRoleClient');
+      const clientSelectWrap = document.getElementById('clientModeSelectorWrap');
+
+      if (role === 'trainer') {
+        btnT.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 bg-emerald-500 text-slate-950 shadow';
+        btnC.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white';
+        clientSelectWrap.classList.add('hidden');
+        clientSelectWrap.classList.remove('flex');
+      } else {
+        btnC.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 bg-emerald-500 text-slate-950 shadow';
+        btnT.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white';
+        clientSelectWrap.classList.remove('hidden');
+        clientSelectWrap.classList.add('flex');
+        if (appState.selectedClientId) {
+          appState.activeClientSelectorId = appState.selectedClientId;
+        }
+        populateHeaderClientSelect();
+      }
+      render();
+    }
+
+    function populateHeaderClientSelect() {
+      const sel = document.getElementById('headerClientSelect');
+      if (!sel) return;
+      sel.innerHTML = appState.clients.map(c =>
+        `<option value="${c.id}" ${c.id === appState.activeClientSelectorId ? 'selected' : ''}>${c.name}</option>`
+      ).join('');
+    }
+
+    function selectClientFromHeader(clientId) {
+      appState.activeClientSelectorId = clientId;
+      render();
+    }
+
+    function openClientProfile(clientId, tab = 'nutrition') {
+      appState.selectedClientId = clientId;
+      appState.activeClientSelectorId = clientId;
+      appState.activeTab = tab;
+      render();
+    }
+
+    function backToTrainerDashboard() {
+      appState.selectedClientId = null;
+      render();
+    }
+
+    function setTab(tab) {
+      appState.activeTab = tab;
+      render();
+    }
+
+    // Helper to get active client object
+    function getCurrentClient() {
+      const id = appState.role === 'client' ? appState.activeClientSelectorId : appState.selectedClientId;
+      return appState.clients.find(c => c.id === id) || appState.clients[0];
+    }
+
+    // Calculate total nutrition macros for a client
+    function calculateClientNutritionTotals(client) {
+      let calories = 0, protein = 0, carbs = 0, fats = 0;
+      client.nutrition.forEach(meal => {
+        meal.items.forEach(item => {
+          calories += Number(item.calories) || 0;
+          protein += Number(item.protein) || 0;
+          carbs += Number(item.carbs) || 0;
+          fats += Number(item.fats) || 0;
+        });
+      });
+      return { calories, protein, carbs, fats };
+    }
+
+    /**
+     * ============================================================================
+     * DATA MUTATION HANDLERS (TRAINER & CLIENT)
+     * ============================================================================
+     */
+
+    function handleAddClient(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const weight = parseFloat(fd.get('weight')) || 75;
+      const today = new Date().toISOString().split('T')[0];
+      const colors = [
+        'from-emerald-500 to-teal-600',
+        'from-blue-500 to-indigo-600',
+        'from-rose-500 to-pink-600',
+        'from-amber-500 to-orange-600'
+      ];
+      const newClient = {
+        id: 'c_' + Date.now(),
+        name: fd.get('name').trim(),
+        age: parseInt(fd.get('age'), 10),
+        gender: fd.get('gender'),
+        avatarColor: colors[appState.clients.length % colors.length],
+        goal: fd.get('goal'),
+        height: parseInt(fd.get('height'), 10),
+        startWeight: weight,
+        currentWeight: weight,
+        checkinStatus: 'Novi klijent',
+        targetMacros: {
+          calories: parseInt(fd.get('targetCalories'), 10),
+          protein: parseInt(fd.get('targetProtein'), 10),
+          carbs: parseInt(fd.get('targetCarbs'), 10),
+          fats: parseInt(fd.get('targetFats'), 10)
+        },
+        nutrition: [
+          { mealName: 'Doručak', eatenToday: false, items: [] },
+          { mealName: 'Ručak', eatenToday: false, items: [] },
+          { mealName: 'Međuobrok', eatenToday: false, items: [] },
+          { mealName: 'Večera', eatenToday: false, items: [] }
+        ],
+        workouts: [],
+        checkins: [],
+        measurements: [
+          { date: today, weight: weight, waist: 80, hips: 96, chest: 98 }
+        ],
+        photos: []
+      };
+      appState.clients.unshift(newClient);
+      saveState();
+      e.target.reset();
+      closeModal('modalAddClient');
+      showToast(`Klijent ${newClient.name} je uspješno dodan!`);
+      openClientProfile(newClient.id, 'nutrition');
+    }
+
+    function addNewMealCategory() {
+      const client = getCurrentClient();
+      const mealNames = ['Pred-trening obrok', 'Poslije-trening obrok', 'Večernji snack', 'Obrok 5'];
+      const name = mealNames[client.nutrition.length % mealNames.length] + ` (#${client.nutrition.length + 1})`;
+      client.nutrition.push({ mealName: name, eatenToday: false, items: [] });
+      saveState();
+      render();
+      showToast('Dodan novi obrok u plan prehrane.');
+    }
+
+    function openAddFoodModal(mealIndex) {
+      document.getElementById('foodMealIndex').value = mealIndex;
+      document.getElementById('formAddFood').reset();
+      openModal('modalAddFood');
+    }
+
+    function handleAddFood(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const mealIndex = parseInt(fd.get('mealIndex'), 10);
+      const client = getCurrentClient();
+      client.nutrition[mealIndex].items.push({
+        id: 'food_' + Date.now(),
+        name: fd.get('name').trim(),
+        calories: parseInt(fd.get('calories'), 10) || 0,
+        protein: parseInt(fd.get('protein'), 10) || 0,
+        carbs: parseInt(fd.get('carbs'), 10) || 0,
+        fats: parseInt(fd.get('fats'), 10) || 0
+      });
+      saveState();
+      closeModal('modalAddFood');
+      render();
+      showToast('Namirnica dodana u plan!');
+    }
+
+    function deleteFoodItem(mealIndex, itemId) {
+      const client = getCurrentClient();
+      client.nutrition[mealIndex].items = client.nutrition[mealIndex].items.filter(i => i.id !== itemId);
+      saveState();
+      render();
+      showToast('Namirnica uklonjena.');
+    }
+
+    function toggleMealEaten(mealIndex) {
+      const client = getCurrentClient();
+      client.nutrition[mealIndex].eatenToday = !client.nutrition[mealIndex].eatenToday;
+      saveState();
+      render();
+    }
+
+    function handleAddWorkoutDay(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const client = getCurrentClient();
+      client.workouts.push({
+        day: fd.get('day'),
+        focus: fd.get('focus').trim(),
+        exercises: []
+      });
+      saveState();
+      e.target.reset();
+      closeModal('modalAddWorkoutDay');
+      render();
+      showToast('Novi dan treninga je kreiran.');
+    }
+
+    function deleteWorkoutDay(dayIndex) {
+      const client = getCurrentClient();
+      client.workouts.splice(dayIndex, 1);
+      saveState();
+      render();
+      showToast('Dan treninga uklonjen.');
+    }
+
+    function openAddExerciseModal(dayIndex) {
+      document.getElementById('exerciseDayIndex').value = dayIndex;
+      document.getElementById('formAddExercise').reset();
+      openModal('modalAddExercise');
+    }
+
+    function handleAddExercise(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const dayIndex = parseInt(fd.get('dayIndex'), 10);
+      const client = getCurrentClient();
+      client.workouts[dayIndex].exercises.push({
+        id: 'ex_' + Date.now(),
+        name: fd.get('name').trim(),
+        sets: parseInt(fd.get('sets'), 10) || 3,
+        reps: fd.get('reps').trim(),
+        load: fd.get('load').trim() || '-',
+        notes: fd.get('notes').trim(),
+        completed: false
+      });
+      saveState();
+      closeModal('modalAddExercise');
+      render();
+      showToast('Vježba dodana u program.');
+    }
+
+    function deleteExercise(dayIndex, exId) {
+      const client = getCurrentClient();
+      client.workouts[dayIndex].exercises = client.workouts[dayIndex].exercises.filter(ex => ex.id !== exId);
+      saveState();
+      render();
+    }
+
+    function toggleExerciseCompleted(dayIndex, exId) {
+      const client = getCurrentClient();
+      const ex = client.workouts[dayIndex].exercises.find(item => item.id === exId);
+      if (ex) {
+        ex.completed = !ex.completed;
+        saveState();
+        render();
+      }
+    }
+
+    // Trainer saves feedback on a check-in
+    function saveCoachFeedback(checkinId) {
+      const input = document.getElementById('feedbackInput_' + checkinId);
+      if (!input) return;
+      const text = input.value.trim();
+      const client = getCurrentClient();
+      const chk = client.checkins.find(c => c.id === checkinId);
+      if (chk) {
+        chk.coachFeedback = text;
+        client.checkinStatus = 'Pregledano';
+        saveState();
+        render();
+        showToast('Povratna informacija spremljena i poslana klijentu!');
+      }
+    }
+
+    // Client submits new Weekly Check-in (with optional photo)
+    function handleClientSubmitCheckin(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const client = getCurrentClient();
+      const weight = parseFloat(fd.get('weight'));
+      const waist = parseFloat(fd.get('waist'));
+      const energy = parseInt(fd.get('energy'), 10);
+      const sleep = parseInt(fd.get('sleep'), 10);
+      const adherence = parseInt(fd.get('adherence'), 10);
+      const clientNote = fd.get('clientNote').trim();
+      const today = new Date().toISOString().split('T')[0];
+      const fileInput = document.getElementById('checkinPhotoFile');
+      const angle = fd.get('photoAngle') || 'Sprijeda';
+
+      const finalizeCheckin = (photoDataUrl) => {
+        const newCheckin = {
+          id: 'chk_' + Date.now(),
+          date: today,
+          weight,
+          waist: isNaN(waist) ? null : waist,
+          energy,
+          sleep,
+          adherence,
+          clientNote,
+          coachFeedback: ''
+        };
+        client.checkins.unshift(newCheckin);
+        client.currentWeight = weight;
+        client.checkinStatus = 'Novo (Čeka pregled)';
+
+        // Also update measurements history
+        const lastM = client.measurements[client.measurements.length - 1] || { hips: 98, chest: 100 };
+        client.measurements.push({
+          date: today,
+          weight,
+          waist: isNaN(waist) ? lastM.waist : waist,
+          hips: lastM.hips,
+          chest: lastM.chest
+        });
+
+        if (photoDataUrl) {
+          client.photos.push({
+            id: 'p_' + Date.now(),
+            date: today,
+            angle,
+            weight: weight + ' kg',
+            url: photoDataUrl
+          });
+        }
+
+        saveState();
+        e.target.reset();
+        showToast('Tjedni check-in je uspješno poslan treneru!');
+        render();
+      };
+
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        compressImageFile(fileInput.files[0], (dataUrl) => {
+          finalizeCheckin(dataUrl);
+        });
+      } else {
+        finalizeCheckin(null);
+      }
+    }
+
+    // Add Measurement
+    function openMeasurementModal() {
+      document.getElementById('measDateInput').value = new Date().toISOString().split('T')[0];
+      openModal('modalAddMeasurement');
+    }
+
+    function handleAddMeasurement(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const client = getCurrentClient();
+      const weight = parseFloat(fd.get('weight'));
+      const waist = parseFloat(fd.get('waist'));
+      const hips = parseFloat(fd.get('hips')) || (client.measurements.at(-1)?.hips || 96);
+      const chest = parseFloat(fd.get('chest')) || (client.measurements.at(-1)?.chest || 100);
+      const date = fd.get('date');
+
+      client.measurements.push({ date, weight, waist, hips, chest });
+      client.measurements.sort((a, b) => a.date.localeCompare(b.date));
+      client.currentWeight = weight;
+      saveState();
+      closeModal('modalAddMeasurement');
+      render();
+      showToast('Nova mjerenja su zabilježena.');
+    }
+
+    // Add Progress Photo
+    function openPhotoModal() {
+      document.getElementById('photoDateInput').value = new Date().toISOString().split('T')[0];
+      openModal('modalAddPhoto');
+    }
+
+    function compressImageFile(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_W = 520;
+          const scale = Math.min(1, MAX_W / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          callback(canvas.toDataURL('image/jpeg', 0.78));
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleAddPhoto(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const fileInput = document.getElementById('photoFileInput');
+      if (!fileInput.files || !fileInput.files[0]) return;
+      const client = getCurrentClient();
+      const date = fd.get('date');
+      const angle = fd.get('angle');
+      const w = fd.get('weight') ? fd.get('weight') + ' kg' : client.currentWeight + ' kg';
+
+      compressImageFile(fileInput.files[0], (dataUrl) => {
+        client.photos.push({
+          id: 'p_' + Date.now(),
+          date,
+          angle,
+          weight: w,
+          url: dataUrl
+        });
+        saveState();
+        e.target.reset();
+        closeModal('modalAddPhoto');
+        render();
+        showToast('Slika napretka je dodana u galeriju.');
+      });
+    }
+
+    function deletePhoto(photoId) {
+      const client = getCurrentClient();
+      client.photos = client.photos.filter(p => p.id !== photoId);
+      saveState();
+      render();
+      showToast('Fotografija obrisana.');
+    }
+
+    function openResetModal() {
+      openModal('modalReset');
+    }
+
+    function confirmResetData() {
+      localStorage.removeItem(STORAGE_KEY);
+      appState.clients = JSON.parse(JSON.stringify(DEFAULT_CLIENTS));
+      appState.selectedClientId = null;
+      appState.activeClientSelectorId = 'c1';
+      saveState();
+      populateHeaderClientSelect();
+      closeModal('modalReset');
+      render();
+      showToast('Demo podaci su uspješno vraćeni.');
+    }
+
+    /**
+     * ============================================================================
+     * RENDERING ENGINE
+     * ============================================================================
+     */
+
+    function render() {
+      const root = document.getElementById('appRoot');
+      if (appState.role === 'trainer') {
+        if (!appState.selectedClientId) {
+          root.innerHTML = renderTrainerDashboard();
+        } else {
+          root.innerHTML = renderClientWorkspace(true);
+        }
+      } else {
+        root.innerHTML = renderClientWorkspace(false);
+      }
+    }
+
+    // 1. TRAINER DASHBOARD (CLIENT LIST)
+    function renderTrainerDashboard() {
+      const filtered = appState.clients.filter(c =>
+        c.name.toLowerCase().includes(appState.searchQuery.toLowerCase()) ||
+        c.goal.toLowerCase().includes(appState.searchQuery.toLowerCase())
+      );
+
+      const pendingCount = appState.clients.filter(c => c.checkinStatus.includes('Novo')).length;
+
+      return `
+        <div class="animate-fade space-y-6">
+          <!-- Hero Stats Banner -->
+          <div class="bg-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div>
+                <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 mb-3">
+                  <i class="fa-solid fa-bolt"></i> Trenerska upravljačka ploča
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Dobrodošli natrag, Treneru!</h1>
+                <p class="text-slate-400 text-sm mt-1">Upravljajte planovima prehrane, treninzima i tjednim check-inovima svojih klijenata.</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <div class="bg-slate-800/90 border border-slate-700 px-4 py-3 rounded-xl">
+                  <div class="text-xs text-slate-400">Aktivni klijenti</div>
+                  <div class="text-2xl font-extrabold text-white">${appState.clients.length}</div>
+                </div>
+                <div class="bg-slate-800/90 border border-slate-700 px-4 py-3 rounded-xl">
+                  <div class="text-xs text-slate-400">Novi Check-inovi</div>
+                  <div class="text-2xl font-extrabold text-amber-400">${pendingCount}</div>
+                </div>
+                <button onclick="openModal('modalAddClient')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-5 py-3 rounded-xl shadow-lg shadow-emerald-500/20 transition flex items-center gap-2 self-center">
+                  <i class="fa-solid fa-plus"></i>
+                  <span>Dodaj novog klijenta</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search & Filter Bar -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="relative flex-1 max-w-md">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+              <input
+                type="text"
+                value="${appState.searchQuery}"
+                oninput="appState.searchQuery = this.value; render();"
+                placeholder="Pretraži klijenta po imenu ili cilju..."
+                class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+              />
+            </div>
+            <div class="text-xs text-slate-500 font-medium">
+              Savjet: Kliknite na karticu klijenta za uređivanje plana ili prebacite na <b>Klijent</b> prikaz u zaglavlju.
+            </div>
+          </div>
+
+          <!-- Client Cards Grid -->
+          ${filtered.length === 0 ? `
+            <div class="glass-card rounded-2xl p-12 text-center">
+              <p class="text-slate-500 font-medium">Nema pronađenih klijenata za upit "${appState.searchQuery}".</p>
+            </div>
+          ` : `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              ${filtered.map(c => {
+                const diff = (c.currentWeight - c.startWeight).toFixed(1);
+                const diffFormatted = diff > 0 ? `+${diff} kg` : `${diff} kg`;
+                const statusBadge = c.checkinStatus.includes('Novo')
+                  ? 'bg-amber-100 text-amber-800 border-amber-200'
+                  : c.checkinStatus.includes('Pregledano')
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                  : 'bg-slate-100 text-slate-700 border-slate-200';
+                const initials = c.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+                return `
+                  <div onclick="openClientProfile('${c.id}')" class="glass-card rounded-2xl p-5 hover:border-emerald-400 hover:shadow-lg transition cursor-pointer group flex flex-col justify-between">
+                    <div>
+                      <div class="flex items-start justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                          <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${c.avatarColor} text-white font-extrabold flex items-center justify-center text-base shadow">
+                            ${initials}
+                          </div>
+                          <div>
+                            <h3 class="font-extrabold text-slate-900 group-hover:text-emerald-600 transition text-base">${c.name}</h3>
+                            <p class="text-xs text-slate-500">${c.age} god • ${c.height} cm</p>
+                          </div>
+                        </div>
+                        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge}">
+                          ${c.checkinStatus}
+                        </span>
+                      </div>
+
+                      <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4">
+                        <div class="text-[11px] uppercase font-bold text-slate-400">Cilj programa</div>
+                        <div class="text-xs font-bold text-slate-800 mt-0.5">${c.goal}</div>
+                      </div>
+
+                      <div class="grid grid-cols-3 gap-2 text-center mb-4">
+                        <div class="bg-slate-50 p-2 rounded-lg">
+                          <div class="text-[10px] text-slate-400 font-semibold">Trenutno</div>
+                          <div class="text-sm font-extrabold text-slate-900">${c.currentWeight} kg</div>
+                        </div>
+                        <div class="bg-slate-50 p-2 rounded-lg">
+                          <div class="text-[10px] text-slate-400 font-semibold">Promjena</div>
+                          <div class="text-sm font-extrabold ${diff <= 0 && c.goal.includes('Gubitak') ? 'text-emerald-600' : 'text-slate-800'}">${diffFormatted}</div>
+                        </div>
+                        <div class="bg-slate-50 p-2 rounded-lg">
+                          <div class="text-[10px] text-slate-400 font-semibold">Kalorije</div>
+                          <div class="text-sm font-extrabold text-slate-900">${c.targetMacros.calories}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+                      <span>Otvori profil i planove</span>
+                      <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // 2. SHARED CLIENT PROFILE / WORKSPACE (FOR BOTH TRAINER EDITING & CLIENT VIEW)
+    function renderClientWorkspace(isTrainer) {
+      const client = getCurrentClient();
+      if (!client) return '';
+
+      const initials = client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      const tabs = [
+        { id: 'nutrition', label: 'Plan prehrane', icon: 'fa-utensils' },
+        { id: 'workout', label: 'Plan treninga', icon: 'fa-dumbbell' },
+        { id: 'checkin', label: 'Tjedni Check-in', icon: 'fa-clipboard-check', badge: client.checkins.filter(c => !c.coachFeedback).length },
+        { id: 'progress', label: 'Praćenje napretka', icon: 'fa-chart-line' },
+        { id: 'photos', label: 'Slike napretka', icon: 'fa-camera' }
+      ];
+
+      let tabContent = '';
+      if (appState.activeTab === 'nutrition') tabContent = renderNutritionTab(client, isTrainer);
+      if (appState.activeTab === 'workout') tabContent = renderWorkoutTab(client, isTrainer);
+      if (appState.activeTab === 'checkin') tabContent = renderCheckinTab(client, isTrainer);
+      if (appState.activeTab === 'progress') tabContent = renderProgressTab(client, isTrainer);
+      if (appState.activeTab === 'photos') tabContent = renderPhotosTab(client, isTrainer);
+
+      return `
+        <div class="animate-fade space-y-6">
+          <!-- Top Breadcrumb / Role Banner -->
+          ${isTrainer ? `
+            <div class="flex items-center justify-between">
+              <button onclick="backToTrainerDashboard()" class="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm transition">
+                <i class="fa-solid fa-arrow-left"></i> Svi klijenti
+              </button>
+              <button onclick="switchRole('client')" class="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2 rounded-xl border border-emerald-200 transition">
+                <i class="fa-solid fa-eye"></i> Pregledaj kao klijent (${client.name.split(' ')[0]})
+              </button>
+            </div>
+          ` : `
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-lg">
+                  <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <div>
+                  <div class="text-xs uppercase tracking-wider font-bold text-emerald-100">Klijentski portal</div>
+                  <div class="font-extrabold text-base sm:text-lg">Pozdrav, ${client.name.split(' ')[0]}! Spreman/na za današnji napredak?</div>
+                </div>
+              </div>
+              <button onclick="setTab('checkin')" class="bg-white text-slate-900 hover:bg-emerald-50 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow self-start sm:self-auto transition">
+                <i class="fa-solid fa-paper-plane text-emerald-600 mr-1"></i> Pošalji Tjedni Check-in
+              </button>
+            </div>
+          `}
+
+          <!-- Client Profile Header Card -->
+          <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div class="flex items-center gap-4">
+                <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${client.avatarColor} text-white font-extrabold text-xl flex items-center justify-center shadow-md shrink-0">
+                  ${initials}
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">${client.name}</h2>
+                    <span class="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">${client.age} god • ${client.height} cm</span>
+                  </div>
+                  <p class="text-sm text-emerald-700 font-semibold mt-0.5"><i class="fa-solid fa-bullseye mr-1"></i> ${client.goal}</p>
+                </div>
+              </div>
+
+              <!-- Quick Macro & Weight Metrics -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div class="bg-slate-50 border border-slate-200/80 px-3.5 py-2.5 rounded-xl">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase">Težina</div>
+                  <div class="text-base font-extrabold text-slate-900">${client.currentWeight} kg <span class="text-xs font-normal text-slate-400">(start ${client.startWeight})</span></div>
+                </div>
+                <div class="bg-slate-50 border border-slate-200/80 px-3.5 py-2.5 rounded-xl">
+                  <div class="text-[11px] font-bold text-slate-400 uppercase">Cilj Kcal</div>
+                  <div class="text-base font-extrabold text-slate-900">${client.targetMacros.calories} kcal</div>
+                </div>
+                <div class="bg-emerald-50/70 border border-emerald-200/70 px-3.5 py-2.5 rounded-xl">
+                  <div class="text-[11px] font-bold text-emerald-700 uppercase">Proteini</div>
+                  <div class="text-base font-extrabold text-emerald-900">${client.targetMacros.protein} g</div>
+                </div>
+                <div class="bg-amber-50/70 border border-amber-200/70 px-3.5 py-2.5 rounded-xl">
+                  <div class="text-[11px] font-bold text-amber-700 uppercase">UH / Masti</div>
+                  <div class="text-base font-extrabold text-amber-900">${client.targetMacros.carbs}g / ${client.targetMacros.fats}g</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="flex overflow-x-auto gap-1 sm:gap-4 border-t border-slate-100 mt-6 pt-1 -mx-2 px-2">
+              ${tabs.map(t => `
+                <button
+                  onclick="setTab('${t.id}')"
+                  class="px-3 py-3 text-xs sm:text-sm font-semibold whitespace-nowrap flex items-center gap-2 transition ${appState.activeTab === t.id ? 'tab-active' : 'text-slate-500 hover:text-slate-900'}"
+                >
+                  <i class="fa-solid ${t.icon} ${appState.activeTab === t.id ? 'text-emerald-500' : ''}"></i>
+                  <span>${t.label}</span>
+                  ${t.badge > 0 ? `<span class="bg-amber-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">${t.badge}</span>` : ''}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Active Tab Body -->
+          <div>${tabContent}</div>
+        </div>
+      `;
+    }
+
+    // TAB 1: PLAN PREHRANE
+    function renderNutritionTab(client, isTrainer) {
+      const totals = calculateClientNutritionTotals(client);
+      const targets = client.targetMacros;
+      const calPct = Math.min(100, Math.round((totals.calories / targets.calories) * 100)) || 0;
+      const protPct = Math.min(100, Math.round((totals.protein / targets.protein) * 100)) || 0;
+      const carbPct = Math.min(100, Math.round((totals.carbs / targets.carbs) * 100)) || 0;
+      const fatPct = Math.min(100, Math.round((totals.fats / targets.fats) * 100)) || 0;
+
+      return `
+        <div class="space-y-5 animate-fade">
+          <!-- Macro Summary Progress Bars -->
+          <div class="glass-card rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 class="font-extrabold text-slate-900 text-base">Dnevni pregled kalorija i makronutrijenata</h3>
+                <p class="text-xs text-slate-500">Automatski izračun svih namirnica u planu prehrane</p>
+              </div>
+              ${isTrainer ? `
+                <button onclick="addNewMealCategory()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition self-start">
+                  <i class="fa-solid fa-plus mr-1 text-emerald-400"></i> Dodaj novi obrok
+                </button>
+              ` : ''}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/70">
+                <div class="flex justify-between text-xs font-bold mb-1.5">
+                  <span class="text-slate-600">Kalorije</span>
+                  <span class="text-slate-900">${totals.calories} / ${targets.calories} kcal</span>
+                </div>
+                <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-slate-900 rounded-full transition-all" style="width: ${calPct}%"></div>
+                </div>
+              </div>
+              <div class="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-200/70">
+                <div class="flex justify-between text-xs font-bold mb-1.5">
+                  <span class="text-emerald-700">Proteini</span>
+                  <span class="text-emerald-900">${totals.protein} / ${targets.protein} g</span>
+                </div>
+                <div class="w-full h-2.5 bg-emerald-200/60 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-500 rounded-full transition-all" style="width: ${protPct}%"></div>
+                </div>
+              </div>
+              <div class="bg-amber-50/50 p-3.5 rounded-xl border border-amber-200/70">
+                <div class="flex justify-between text-xs font-bold mb-1.5">
+                  <span class="text-amber-700">Ugljikohidrati</span>
+                  <span class="text-amber-900">${totals.carbs} / ${targets.carbs} g</span>
+                </div>
+                <div class="w-full h-2.5 bg-amber-200/60 rounded-full overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full transition-all" style="width: ${carbPct}%"></div>
+                </div>
+              </div>
+              <div class="bg-rose-50/50 p-3.5 rounded-xl border border-rose-200/70">
+                <div class="flex justify-between text-xs font-bold mb-1.5">
+                  <span class="text-rose-700">Masti</span>
+                  <span class="text-rose-900">${totals.fats} / ${targets.fats} g</span>
+                </div>
+                <div class="w-full h-2.5 bg-rose-200/60 rounded-full overflow-hidden">
+                  <div class="h-full bg-rose-500 rounded-full transition-all" style="width: ${fatPct}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Meals List -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            ${client.nutrition.map((meal, mIdx) => {
+              const mealKcal = meal.items.reduce((s, i) => s + Number(i.calories), 0);
+              const mealP = meal.items.reduce((s, i) => s + Number(i.protein), 0);
+              return `
+                <div class="glass-card rounded-2xl p-5 flex flex-col justify-between ${meal.eatenToday && !isTrainer ? 'ring-2 ring-emerald-500/60 bg-emerald-50/10' : ''}">
+                  <div>
+                    <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100 mb-3">
+                      <div class="flex items-center gap-2.5">
+                        ${!isTrainer ? `
+                          <button onclick="toggleMealEaten(${mIdx})" class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition ${meal.eatenToday ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 hover:border-emerald-500'}">
+                            ${meal.eatenToday ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                          </button>
+                        ` : `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>`}
+                        <h4 class="font-extrabold text-slate-900 text-sm sm:text-base ${meal.eatenToday && !isTrainer ? 'line-through text-slate-400' : ''}">${meal.mealName}</h4>
+                      </div>
+                      <span class="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg">${mealKcal} kcal • ${mealP}g P</span>
+                    </div>
+
+                    ${meal.items.length === 0 ? `
+                      <p class="text-xs text-slate-400 italic py-4 text-center">Nema unesenih namirnica za ovaj obrok.</p>
+                    ` : `
+                      <ul class="divide-y divide-slate-100">
+                        ${meal.items.map(item => `
+                          <li class="py-2.5 flex items-center justify-between gap-2 text-xs sm:text-sm">
+                            <div>
+                              <div class="font-semibold text-slate-800">${item.name}</div>
+                              <div class="text-[11px] text-slate-500 mt-0.5">
+                                <span class="font-bold text-slate-700">${item.calories} kcal</span> •
+                                <span class="text-emerald-600 font-semibold">P: ${item.protein}g</span> •
+                                <span class="text-amber-600 font-semibold">UH: ${item.carbs}g</span> •
+                                <span class="text-rose-600 font-semibold">M: ${item.fats}g</span>
+                              </div>
+                            </div>
+                            ${isTrainer ? `
+                              <button onclick="deleteFoodItem(${mIdx}, '${item.id}')" title="Ukloni namirnicu" class="text-slate-300 hover:text-rose-500 p-1.5 transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                              </button>
+                            ` : ''}
+                          </li>
+                        `).join('')}
+                      </ul>
+                    `}
+                  </div>
+
+                  ${isTrainer ? `
+                    <button onclick="openAddFoodModal(${mIdx})" class="mt-4 w-full py-2 rounded-xl border border-dashed border-slate-300 hover:border-emerald-500 hover:text-emerald-700 text-slate-500 text-xs font-bold transition flex items-center justify-center gap-1.5">
+                      <i class="fa-solid fa-plus"></i> Dodaj namirnicu
+                    </button>
+                  ` : `
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span class="text-slate-400">Status obroka:</span>
+                      <button onclick="toggleMealEaten(${mIdx})" class="font-bold ${meal.eatenToday ? 'text-emerald-600' : 'text-slate-500 hover:text-emerald-600'}">
+                        ${meal.eatenToday ? '✓ Pojedeno danas' : 'Označi kao pojedeno'}
+                      </button>
+                    </div>
+                  `}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // TAB 2: PLAN TRENINGA
+    function renderWorkoutTab(client, isTrainer) {
+      return `
+        <div class="space-y-5 animate-fade">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-lg">Tjedni program treninga</h3>
+              <p class="text-xs text-slate-500">${isTrainer ? 'Kreirajte dane treninga i dodajte vježbe sa serijama i opterećenjem.' : 'Označite odrađene vježbe tijekom treninga.'}</p>
+            </div>
+            ${isTrainer ? `
+              <button onclick="openModal('modalAddWorkoutDay')" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow transition self-start">
+                <i class="fa-solid fa-plus mr-1"></i> Dodaj trening dan
+              </button>
+            ` : ''}
+          </div>
+
+          ${client.workouts.length === 0 ? `
+            <div class="glass-card rounded-2xl p-10 text-center">
+              <i class="fa-solid fa-dumbbell text-3xl text-slate-300 mb-2"></i>
+              <p class="text-sm font-semibold text-slate-600">Još nema kreiranih treninga za ovog klijenta.</p>
+            </div>
+          ` : `
+            <div class="space-y-5">
+              ${client.workouts.map((wDay, dIdx) => {
+                const doneCount = wDay.exercises.filter(e => e.completed).length;
+                return `
+                  <div class="glass-card rounded-2xl overflow-hidden">
+                    <div class="bg-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
+                      <div class="flex items-center gap-3">
+                        <span class="bg-emerald-500 text-slate-950 text-xs font-extrabold px-2.5 py-1 rounded-lg uppercase">${wDay.day}</span>
+                        <h4 class="font-bold text-sm sm:text-base">${wDay.focus}</h4>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        ${!isTrainer && wDay.exercises.length > 0 ? `
+                          <span class="text-xs bg-slate-800 text-emerald-400 px-2.5 py-1 rounded-lg font-bold">${doneCount}/${wDay.exercises.length} odrađeno</span>
+                        ` : ''}
+                        ${isTrainer ? `
+                          <button onclick="openAddExerciseModal(${dIdx})" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Vježba
+                          </button>
+                          <button onclick="deleteWorkoutDay(${dIdx})" title="Obriši dan" class="text-slate-400 hover:text-rose-400 p-1.5 transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                          </button>
+                        ` : ''}
+                      </div>
+                    </div>
+
+                    <div class="p-4 sm:p-5 overflow-x-auto">
+                      ${wDay.exercises.length === 0 ? `
+                        <p class="text-xs text-slate-400 italic text-center py-3">Nema dodanih vježbi za ovaj dan.</p>
+                      ` : `
+                        <table class="w-full text-left border-collapse min-w-[560px]">
+                          <thead>
+                            <tr class="text-[11px] uppercase text-slate-400 border-b border-slate-100">
+                              ${!isTrainer ? '<th class="pb-2 w-10">Status</th>' : ''}
+                              <th class="pb-2">Vježba</th>
+                              <th class="pb-2">Serije</th>
+                              <th class="pb-2">Ponavljanja</th>
+                              <th class="pb-2">Težina / RPE</th>
+                              <th class="pb-2">Napomena</th>
+                              ${isTrainer ? '<th class="pb-2 text-right">Akcija</th>' : ''}
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100 text-xs sm:text-sm">
+                            ${wDay.exercises.map(ex => `
+                              <tr class="${ex.completed && !isTrainer ? 'bg-emerald-50/40' : 'hover:bg-slate-50/70'}">
+                                ${!isTrainer ? `
+                                  <td class="py-3">
+                                    <button onclick="toggleExerciseCompleted(${dIdx}, '${ex.id}')" class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition ${ex.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 hover:border-emerald-500'}">
+                                      ${ex.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                                    </button>
+                                  </td>
+                                ` : ''}
+                                <td class="py-3 font-bold text-slate-800 ${ex.completed && !isTrainer ? 'line-through text-slate-400' : ''}">${ex.name}</td>
+                                <td class="py-3 font-semibold text-slate-700">${ex.sets}</td>
+                                <td class="py-3 font-semibold text-slate-700">${ex.reps}</td>
+                                <td class="py-3"><span class="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded text-xs">${ex.load}</span></td>
+                                <td class="py-3 text-xs text-slate-500">${ex.notes || '-'}</td>
+                                ${isTrainer ? `
+                                  <td class="py-3 text-right">
+                                    <button onclick="deleteExercise(${dIdx}, '${ex.id}')" class="text-slate-300 hover:text-rose-500 p-1">
+                                      <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                  </td>
+                                ` : ''}
+                              </tr>
+                            `).join('')}
+                          </tbody>
+                        </table>
+                      `}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // TAB 3: TJEDNI CHECK-IN (CLIENT FORM + TRAINER REVIEW & FEEDBACK)
+    function renderCheckinTab(client, isTrainer) {
+      return `
+        <div class="space-y-6 animate-fade">
+          ${!isTrainer ? `
+            <!-- CLIENT NEW CHECK-IN SUBMISSION FORM -->
+            <div class="glass-card rounded-2xl p-5 sm:p-6 border-t-4 border-t-emerald-500">
+              <h3 class="text-lg font-extrabold text-slate-900 mb-1">Novi Tjedni Check-in Izvještaj</h3>
+              <p class="text-xs text-slate-500 mb-5">Ispuni podatke o proteklom tjednu kako bi trener mogao prilagoditi tvoj plan.</p>
+
+              <form onsubmit="handleClientSubmitCheckin(event)" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Trenutna težina (kg) *</label>
+                    <input type="number" step="0.1" name="weight" required value="${client.currentWeight}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Opseg struka (cm)</label>
+                    <input type="number" step="0.5" name="waist" placeholder="npr. 85.0" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Razina energije (1-10) *</label>
+                    <input type="number" name="energy" min="1" max="10" required value="8" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Kvaliteta sna (1-10) *</label>
+                    <input type="number" name="sleep" min="1" max="10" required value="8" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Pridržavanje plana (%) *</label>
+                    <input type="number" name="adherence" min="0" max="100" required value="90" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 mb-1">Komentar za trenera (kako su prošli treninzi, glad, stres...) *</label>
+                  <textarea name="clientNote" rows="3" required placeholder="Napiši kako si se osjećao/la ovaj tjedan..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:border-emerald-500"></textarea>
+                </div>
+
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-700 mb-1"><i class="fa-solid fa-camera text-emerald-600 mr-1"></i> Priloži novu sliku napretka (opcionalno)</label>
+                    <input type="file" id="checkinPhotoFile" accept="image/*" class="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-emerald-100 file:text-emerald-800" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Kut slike</label>
+                    <select name="photoAngle" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white">
+                      <option value="Sprijeda">Sprijeda</option>
+                      <option value="Sa strane">Sa strane</option>
+                      <option value="Straga">Straga</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex justify-end">
+                  <button type="submit" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-sm px-6 py-3 rounded-xl shadow-md transition flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Pošalji Check-in treneru
+                  </button>
+                </div>
+              </form>
+            </div>
+          ` : ''}
+
+          <!-- CHECK-IN HISTORY LIST -->
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base mb-3">Povijest Tjednih Check-inova (${client.checkins.length})</h3>
+            ${client.checkins.length === 0 ? `
+              <div class="glass-card rounded-2xl p-8 text-center text-sm text-slate-500">Još nema poslanih check-in izvještaja.</div>
+            ` : `
+              <div class="space-y-4">
+                ${client.checkins.map(chk => `
+                  <div class="glass-card rounded-2xl p-5 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                      <div class="flex items-center gap-2.5">
+                        <span class="bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded-lg"><i class="fa-regular fa-calendar mr-1.5 text-emerald-400"></i>${chk.date}</span>
+                        <span class="text-sm font-extrabold text-slate-900">Težina: ${chk.weight} kg</span>
+                        ${chk.waist ? `<span class="text-xs font-semibold text-slate-500">• Struk: ${chk.waist} cm</span>` : ''}
+                      </div>
+                      <span class="text-xs font-bold px-2.5 py-1 rounded-full ${chk.coachFeedback ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                        ${chk.coachFeedback ? '✓ Trener odgovorio' : '⏳ Čeka odgovor trenera'}
+                      </span>
+                    </div>
+
+                    <!-- Metrics Pills -->
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                      <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="text-[11px] text-slate-400 font-bold">Energija</div>
+                        <div class="text-sm font-extrabold text-slate-900">${chk.energy} / 10</div>
+                      </div>
+                      <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="text-[11px] text-slate-400 font-bold">Kvaliteta sna</div>
+                        <div class="text-sm font-extrabold text-slate-900">${chk.sleep} / 10</div>
+                      </div>
+                      <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <div class="text-[11px] text-slate-400 font-bold">Pridržavanje plana</div>
+                        <div class="text-sm font-extrabold text-emerald-600">${chk.adherence}%</div>
+                      </div>
+                    </div>
+
+                    <!-- Client Note -->
+                    <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/60">
+                      <div class="text-[11px] font-bold uppercase text-slate-400 mb-1">Bilješka klijenta:</div>
+                      <p class="text-sm text-slate-700 leading-relaxed">"${chk.clientNote}"</p>
+                    </div>
+
+                    <!-- Coach Feedback Section -->
+                    ${isTrainer ? `
+                      <div class="bg-emerald-50/50 rounded-xl p-3.5 border border-emerald-200/80">
+                        <label class="block text-xs font-extrabold text-emerald-900 mb-1.5">
+                          <i class="fa-solid fa-comment-dots mr-1 text-emerald-600"></i> Povratna informacija trenera (Feedback):
+                        </label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            id="feedbackInput_${chk.id}"
+                            value="${chk.coachFeedback || ''}"
+                            placeholder="Upišite komentar, pohvalu ili korekciju plana..."
+                            class="flex-1 px-3.5 py-2 rounded-xl border border-emerald-300 bg-white text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          <button onclick="saveCoachFeedback('${chk.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0">
+                            Spremi odgovor
+                          </button>
+                        </div>
+                      </div>
+                    ` : (chk.coachFeedback ? `
+                      <div class="bg-emerald-50 rounded-xl p-3.5 border border-emerald-200">
+                        <div class="text-[11px] font-extrabold uppercase text-emerald-700 mb-1"><i class="fa-solid fa-user-tie mr-1"></i> Odgovor trenera:</div>
+                        <p class="text-sm font-medium text-emerald-950">${chk.coachFeedback}</p>
+                      </div>
+                    ` : '')}
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    // TAB 4: PRAĆENJE NAPRETKA (SVG LINE CHART + MEASUREMENTS TABLE)
+    function renderProgressTab(client, isTrainer) {
+      const data = client.measurements || [];
+      const svgChart = buildWeightSvgChart(data);
+
+      return `
+        <div class="space-y-6 animate-fade">
+          <!-- Chart Card -->
+          <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">Kretanje tjelesne težine i opsega struka</h3>
+                <p class="text-xs text-slate-500">Vizualni prikaz napretka kroz vrijeme</p>
+              </div>
+              <button onclick="openMeasurementModal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition self-start">
+                <i class="fa-solid fa-plus mr-1 text-emerald-400"></i> Unesi nove mjere
+              </button>
+            </div>
+
+            <div class="flex items-center gap-5 text-xs font-bold mb-3">
+              <span class="flex items-center gap-1.5 text-emerald-700"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Težina (kg)</span>
+              <span class="flex items-center gap-1.5 text-amber-700"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Struk (cm)</span>
+            </div>
+
+            <div class="w-full overflow-x-auto bg-slate-50 rounded-xl p-3 border border-slate-200/70">
+              ${svgChart}
+            </div>
+          </div>
+
+          <!-- Measurements History Table -->
+          <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <h3 class="font-extrabold text-slate-900 text-base mb-4">Tablica antropometrijskih mjerenja</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse min-w-[480px]">
+                <thead>
+                  <tr class="text-[11px] uppercase text-slate-400 border-b border-slate-200">
+                    <th class="pb-2.5">Datum</th>
+                    <th class="pb-2.5">Težina (kg)</th>
+                    <th class="pb-2.5">Struk (cm)</th>
+                    <th class="pb-2.5">Bokovi (cm)</th>
+                    <th class="pb-2.5">Prsa (cm)</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                  ${[...data].reverse().map(m => `
+                    <tr class="hover:bg-slate-50">
+                      <td class="py-3 font-semibold text-slate-700">${m.date}</td>
+                      <td class="py-3 font-extrabold text-emerald-700">${m.weight} kg</td>
+                      <td class="py-3 font-bold text-amber-700">${m.waist} cm</td>
+                      <td class="py-3 text-slate-600">${m.hips} cm</td>
+                      <td class="py-3 text-slate-600">${m.chest} cm</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildWeightSvgChart(measurements) {
+      if (!measurements || measurements.length === 0) {
+        return `<div class="py-10 text-center text-xs text-slate-400">Nema dovoljno podataka za prikaz grafikona.</div>`;
+      }
+      const W = 720, H = 240, PAD_X = 52, PAD_Y = 30;
+      const weights = measurements.map(m => m.weight);
+      const waists = measurements.map(m => m.waist);
+
+      const minW = Math.floor(Math.min(...weights) - 2);
+      const maxW = Math.ceil(Math.max(...weights) + 2);
+      const rangeW = Math.max(1, maxW - minW);
+
+      const minWaist = Math.floor(Math.min(...waists) - 2);
+      const maxWaist = Math.ceil(Math.max(...waists) + 2);
+      const rangeWaist = Math.max(1, maxWaist - minWaist);
+
+      const count = measurements.length;
+      const getX = (idx) => count === 1 ? W / 2 : PAD_X + (idx / (count - 1)) * (W - PAD_X * 2);
+      const getYW = (val) => H - PAD_Y - ((val - minW) / rangeW) * (H - PAD_Y * 2);
+      const getYWaist = (val) => H - PAD_Y - ((val - minWaist) / rangeWaist) * (H - PAD_Y * 2);
+
+      const weightPoints = measurements.map((m, i) => `${getX(i)},${getYW(m.weight)}`).join(' ');
+      const waistPoints = measurements.map((m, i) => `${getX(i)},${getYWaist(m.waist)}`).join(' ');
+
+      return `
+        <svg viewBox="0 0 ${W} ${H}" class="w-full h-56 min-w-[540px]">
+          <!-- Horizontal grid lines -->
+          ${[0, 0.25, 0.5, 0.75, 1].map(t => {
+            const y = PAD_Y + t * (H - PAD_Y * 2);
+            const labelVal = (maxW - t * rangeW).toFixed(1);
+            return `
+              <line x1="${PAD_X}" y1="${y}" x2="${W - PAD_X}" y2="${y}" stroke="#e2e8f0" stroke-dasharray="4 4" />
+              <text x="${PAD_X - 8}" y="${y + 4}" text-anchor="end" fill="#64748b" font-size="10" font-weight="bold">${labelVal}kg</text>
+            `;
+          }).join('')}
+
+          <!-- Waist Line (Dashed Amber) -->
+          ${count > 1 ? `<polyline fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 4" points="${waistPoints}" />` : ''}
+
+          <!-- Weight Line (Solid Emerald) -->
+          ${count > 1 ? `<polyline fill="none" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="${weightPoints}" />` : ''}
+
+          <!-- Data Points & Labels -->
+          ${measurements.map((m, i) => {
+            const cx = getX(i);
+            const cyW = getYW(m.weight);
+            const cyWaist = getYWaist(m.waist);
+            return `
+              <circle cx="${cx}" cy="${cyWaist}" r="4.5" fill="#f59e0b" stroke="#fff" stroke-width="1.5" />
+              <text x="${cx}" y="${cyWaist + 14}" text-anchor="middle" fill="#b45309" font-size="10" font-weight="bold">${m.waist}cm</text>
+
+              <circle cx="${cx}" cy="${cyW}" r="6" fill="#10b981" stroke="#fff" stroke-width="2" />
+              <text x="${cx}" y="${cyW - 10}" text-anchor="middle" fill="#065f46" font-size="11" font-extrabold="true" font-weight="bold">${m.weight}kg</text>
+
+              <text x="${cx}" y="${H - 8}" text-anchor="middle" fill="#64748b" font-size="10">${m.date.slice(5)}</text>
+            `;
+          }).join('')}
+        </svg>
+      `;
+    }
+
+    // TAB 5: SLIKE NAPRETKA (GALERIJA + PRIJE / POSLIJE USPOREDBA)
+    function renderPhotosTab(client, isTrainer) {
+      const angles = ['Sprijeda', 'Sa strane', 'Straga'];
+      const filteredByAngle = client.photos.filter(p => p.angle === appState.compareAngle);
+      const firstPhoto = filteredByAngle[0];
+      const latestPhoto = filteredByAngle.length > 1 ? filteredByAngle[filteredByAngle.length - 1] : null;
+
+      return `
+        <div class="space-y-6 animate-fade">
+          <!-- Side-by-Side Before / After Comparison -->
+          <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+              <div>
+                <h3 class="font-extrabold text-slate-900 text-base sm:text-lg">Usporedba transformacije (Prije / Poslije)</h3>
+                <p class="text-xs text-slate-500">Automatska usporedba prve i najnovije fotografije za odabrani kut</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="bg-slate-100 p-1 rounded-xl flex text-xs font-bold">
+                  ${angles.map(ang => `
+                    <button onclick="appState.compareAngle = '${ang}'; render();" class="px-3 py-1.5 rounded-lg transition ${appState.compareAngle === ang ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}">
+                      ${ang}
+                    </button>
+                  `).join('')}
+                </div>
+                <button onclick="openPhotoModal()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-3.5 py-2.5 rounded-xl shadow transition">
+                  <i class="fa-solid fa-upload mr-1"></i> Dodaj sliku
+                </button>
+              </div>
+            </div>
+
+            ${firstPhoto && latestPhoto ? `
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 relative">
+                  <span class="absolute top-3 left-3 bg-amber-500 text-slate-950 text-xs font-extrabold px-3 py-1 rounded-full shadow">PRIJE • ${firstPhoto.date}</span>
+                  <img src="${firstPhoto.url}" alt="Prije" class="w-full h-80 object-contain bg-slate-950" />
+                  <div class="p-3 bg-slate-900 text-white flex justify-between text-xs font-bold">
+                    <span>Kut: ${firstPhoto.angle}</span>
+                    <span class="text-amber-400">${firstPhoto.weight}</span>
+                  </div>
+                </div>
+                <div class="bg-slate-900 rounded-2xl overflow-hidden border-2 border-emerald-500 relative">
+                  <span class="absolute top-3 left-3 bg-emerald-500 text-slate-950 text-xs font-extrabold px-3 py-1 rounded-full shadow">POSLIJE • ${latestPhoto.date}</span>
+                  <img src="${latestPhoto.url}" alt="Poslije" class="w-full h-80 object-contain bg-slate-950" />
+                  <div class="p-3 bg-slate-900 text-white flex justify-between text-xs font-bold">
+                    <span>Kut: ${latestPhoto.angle}</span>
+                    <span class="text-emerald-400">${latestPhoto.weight}</span>
+                  </div>
+                </div>
+              </div>
+            ` : `
+              <div class="bg-slate-50 rounded-xl p-6 text-center border border-dashed border-slate-300 text-xs text-slate-500">
+                Za usporedbu "Prije / Poslije" za kut <b>${appState.compareAngle}</b> potrebne su barem 2 fotografije s različitim datumima.
+              </div>
+            `}
+          </div>
+
+          <!-- All Photos Gallery -->
+          <div class="glass-card rounded-2xl p-5 sm:p-6">
+            <h3 class="font-extrabold text-slate-900 text-base mb-4">Sve fotografije u galeriji (${client.photos.length})</h3>
+            ${client.photos.length === 0 ? `
+              <p class="text-sm text-slate-400 text-center py-6">Galerija je trenutno prazna.</p>
+            ` : `
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                ${[...client.photos].reverse().map(photo => `
+                  <div class="rounded-xl overflow-hidden border border-slate-200 bg-slate-900 group relative shadow-sm">
+                    <img src="${photo.url}" alt="${photo.angle}" class="w-full h-56 object-contain bg-slate-950" />
+                    <button onclick="deletePhoto('${photo.id}')" title="Obriši sliku" class="absolute top-2 right-2 w-7 h-7 rounded-lg bg-rose-600/90 text-white text-xs opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                    <div class="p-2.5 bg-white text-xs">
+                      <div class="font-extrabold text-slate-900 flex justify-between">
+                        <span>${photo.angle}</span>
+                        <span class="text-emerald-600">${photo.weight}</span>
+                      </div>
+                      <div class="text-[11px] text-slate-400 mt-0.5">${photo.date}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    // Initialize Application on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      populateHeaderClientSelect();
+      render();
+    });
+  </script>
+</body>
+</html>
