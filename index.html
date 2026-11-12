@@ -2043,5 +2043,26 @@
       render();
     });
   </script>
+  // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDj6HxCc8eaC60DV6usE3AzUHHlnttAynE",
+  authDomain: "fitfocus-5b012.firebaseapp.com",
+  projectId: "fitfocus-5b012",
+  storageBucket: "fitfocus-5b012.firebasestorage.app",
+  messagingSenderId: "130812116751",
+  appId: "1:130812116751:web:5d0f1e3a2d3fc3772d887a",
+  measurementId: "G-CJY6QB5RNN"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 </body>
 </html>
